@@ -152,10 +152,8 @@ def cmd_loop(session_id, prompt, interval, now):
     def do_send():
         nonlocal count
         count += 1
-        created_at = datetime.now(BJT)
-        text = build_message(prompt, created_at)
         t = datetime.now().strftime("%H:%M:%S")
-        send_prompt(config, sid, text)
+        send_prompt(config, sid, prompt)
         print(f"[{t}] 第 {count} 次发送成功")
 
     try:
