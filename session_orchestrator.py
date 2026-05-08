@@ -41,9 +41,10 @@ def launch_session(agent, directory, prompt, title=None):
     """
     cmd = [
         "opencode", "run",
-        "--agent", agent,
         "--format", "json",
     ]
+    if agent:
+        cmd += ["--agent", agent]
     if title:
         cmd += ["--title", title]
     cmd.append(prompt)
@@ -136,7 +137,7 @@ def main():
   session_orchestrator.py -a my-agent -d . -p "start" --state-file state.json --state-key session_id
         """,
     )
-    parser.add_argument("--agent", "-a", default="build", help="智能体名称 (默认: build)")
+    parser.add_argument("--agent", "-a", default="", help="智能体名称 (默认: 使用项目 opencode.json 中的 default_agent)")
     parser.add_argument("--dir", "-d", required=True, help="项目目录")
     parser.add_argument("--prompt", "-p", required=True, help="启动提示词")
     parser.add_argument("--time", "-t", dest="interval", type=int, default=15,
