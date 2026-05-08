@@ -27,6 +27,7 @@ from requests.auth import HTTPBasicAuth
 
 HERE = Path(__file__).parent
 DEFAULT_CONFIG = HERE / "config.json"
+BJT = timezone(timedelta(hours=8))
 
 
 def load_config(config_path=None):
@@ -73,21 +74,22 @@ def send_prompt(config, session_id, text):
 
 
 def build_message(original_prompt, created_at=None):
-    """Wrap a prompt with UTC timestamp context."""
+    """Wrap a prompt with Beijing-time timestamp context."""
     if created_at is None:
-        created_at = datetime.now(timezone.utc)
-    now_ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-    created_ts = created_at.strftime("%Y-%m-%d %H:%M:%S UTC")
+        created_at = datetime.now(BJT)
+    now_ts = datetime.now(BJT).strftime("%Y-%m-%d %H:%M:%S (北京时间)")
+    created_ts = created_at.strftime("%Y-%m-%d %H:%M:%S (北京时间)")
     return f"现在是{now_ts}，收到了一条来自{created_ts}的指令：\n{original_prompt}"
 
 
 def schedule_and_send(session_id, prompt, delay_seconds, config_path=None):
     """Wait delay_seconds then send prompt. Returns after sending."""
     config = require_config(load_config(config_path))
-    text = build_message(prompt)
+    created_at = datetime.now(BJT)
     if delay_seconds > 0:
         print(f"Waiting {delay_seconds}s ...")
         time.sleep(delay_seconds)
+    text = build_message(prompt, created_at)
     send_prompt(config, session_id, text)
     print(f"[{datetime.now().strftime('%H:%M:%S')}] Sent to {session_id}")
 
@@ -131,7 +133,7 @@ def main():
     if not args.delay and not args.at_time:
         sys.exit("Error: specify either --in SECONDS or --at TIME")
 
-    created_at = datetime.now(timezone.utc)
+    created_at = datetime.now(BJT)
 
     if args.delay:
         delay = args.delay

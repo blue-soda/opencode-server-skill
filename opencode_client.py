@@ -17,7 +17,7 @@ import sys
 import time
 from datetime import datetime
 
-from scheduled_send import build_message, load_config, send_prompt
+from scheduled_send import BJT, build_message, load_config, send_prompt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(HERE, "config.json")
@@ -118,12 +118,13 @@ def cmd_send(session_id, prompt, delay=0):
     require_password()
     sid = resolve_session(session_id)
     config = load_config()
+    created_at = datetime.now(BJT)
 
     if delay > 0:
         print(f"[{datetime.now().strftime('%H:%M:%S')}] 等待 {delay}s ...")
         time.sleep(delay)
 
-    text = build_message(prompt)
+    text = build_message(prompt, created_at)
     t = datetime.now().strftime("%H:%M:%S")
     send_prompt(config, sid, text)
     print(f"[{t}] 已发送到 {sid}")
@@ -151,7 +152,8 @@ def cmd_loop(session_id, prompt, interval, now):
     def do_send():
         nonlocal count
         count += 1
-        text = build_message(prompt)
+        created_at = datetime.now(BJT)
+        text = build_message(prompt, created_at)
         t = datetime.now().strftime("%H:%M:%S")
         send_prompt(config, sid, text)
         print(f"[{t}] 第 {count} 次发送成功")
