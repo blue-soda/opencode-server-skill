@@ -24,10 +24,8 @@ session_orchestrator.py — 通用 OpenCode 会话编排器
 import argparse
 import json
 import os
-import signal
 import subprocess
 import sys
-import time
 from datetime import datetime
 
 SKILL_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -52,14 +50,12 @@ def launch_session(agent, directory, prompt, title=None):
         cmd,
         cwd=directory,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
         text=True,
-        preexec_fn=os.setsid,  # 创建独立进程组, 便于终止
     )
 
     session_id = None
     try:
-        # 读取第一行 JSON, 提取 sessionID
         for line in proc.stdout:
             if not line.strip():
                 continue
@@ -72,12 +68,8 @@ def launch_session(agent, directory, prompt, title=None):
             except json.JSONDecodeError:
                 continue
     finally:
-        # 终止 opencode run 进程 (会话已创建在服务端)
-        try:
-            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-        except (ProcessLookupError, OSError):
-            pass
-        proc.wait(timeout=5)
+        # 获取 session ID 后关闭管道, 不等待进程终止 — 会话在服务端继续运行
+        proc.stdout.close()
 
     if not session_id:
         stderr_output = proc.stderr.read() if proc.stderr else ""
