@@ -16,7 +16,8 @@ This skill teaches agents how to programmatically interact with a running OpenCo
 1. **session_tree.py** — Fetch all sessions via `/experimental/session` and display them as a human-readable tree, sorted by recent activity, with keyword filtering.
 2. **scheduled_send.py** — Send a prompt to a session at a specified time, with timestamp metadata prepended. Core functions (`load_config`, `send_prompt`, `build_message`) are importable by other modules.
 3. **opencode_client.py** — Unified CLI aggregating session management (`list`, `setmain`) and message sending (`send`, `loop`). Imports from `scheduled_send.py` for code reuse.
-4. **Shared config** — A single `config.json` (or environment variables) for server address, port, and credentials.
+4. **session_orchestrator.py** — Generic session orchestrator. Creates a session via API, sends initial prompt, optionally updates an external state file, then enters a periodic wakeup loop.
+5. **Shared config** — A single `config.json` (or environment variables) for server address, port, and credentials.
 
 ---
 
@@ -198,6 +199,39 @@ python3 opencode_client.py loop --prompt "周期性检查" --time 30 --now
 
 ---
 
+---
+
+## Script 4: session_orchestrator.py
+
+### Purpose
+
+Generic session orchestrator. Creates a new session via `POST /session`, sends the initial prompt, optionally updates an external state JSON file, then enters a periodic wakeup loop. No project-specific logic — all parameters (agent, directory, prompt, interval) are CLI arguments.
+
+### Usage
+
+```bash
+# Full orchestration: create session, send prompt, loop every 15min
+python3 session_orchestrator.py   -a opencood-main   -d /home/user/Workspace/MyProject   -p "推进所有研究方向"   -t 15
+
+# Create session + send prompt only (no loop)
+python3 session_orchestrator.py 
+  -a my-agent -d /path/to/proj -p "start" --no-loop
+
+# Update an external state file with the new session ID
+python3 session_orchestrator.py   -a build -d . -p "hello"   --state-file state.json --state-key _meta.session_id
+
+# Custom loop prompt
+python3 session_orchestrator.py   -a opencood-main -d ~/Workspace/OpenCOOD -p "推进研究"   --loop-prompt "检查训练进度并推进任务" -t 30
+```
+
+### How It Works
+
+1. `POST /session` — creates a new session with the specified agent and directory
+2. Optionally writes the session ID to a JSON state file (supporting dot-notation keys)
+3. `POST /session/:id/prompt_async` — sends the initial prompt
+4. If not `--no-loop`: runs `opencode_client.py loop` for periodic wakeup messages
+
+
 ## Key API Endpoints
 
 | Method | Path | Purpose |
@@ -231,21 +265,16 @@ python3 opencode_client.py loop --prompt "周期性检查" --time 30 --now
 ## Recommended Multi-Agent Architecture
 
 ```
-External Supervisor (cron / systemd timer / manual)
-  → opencode_client.py send --in N
+External Supervisor (session_orchestrator.py / cron / manual)
+  → opencode_client.py send/loop
     → OpenCode Server API
-      → Orchestrator Session (主智能体)
+      → Primary Agent Session
         → Worker Sessions (coder)
         → Reviewer Sessions (reviewer)
         → Planner Sessions (planner)
 ```
 
-```
-Agent Self-Wakeup Pattern:
-  Orchestrator Session
-    → opencode_client.py send --id <self> --prompt "..." --in 900
-      → 15 min later: self-wakeup, check training progress
-```
+The supervisor handles session creation, initial prompting, periodic wakeups, and state file updates. Agents handle reasoning, implementation, review, and planning without worrying about self-wakeup.
 
 ---
 
@@ -253,11 +282,12 @@ Agent Self-Wakeup Pattern:
 
 ```
 opencode-server/
-├── config.json           # shared server config
-├── session_tree.py       # session listing (standalone)
-├── scheduled_send.py     # delayed send + reusable library
-├── opencode_client.py    # unified CLI (imports scheduled_send)
-└── SKILL.md              # this file
+├── config.json                # shared server config
+├── session_tree.py            # session listing (standalone)
+├── scheduled_send.py          # delayed send + reusable library
+├── opencode_client.py         # unified CLI (imports scheduled_send)
+├── session_orchestrator.py    # generic session orchestrator
+└── SKILL.md                   # this file
 ```
 
 `scheduled_send.py` is the shared library. `opencode_client.py` imports from it for config loading, prompt building, and API sending. `session_tree.py` is called via subprocess by `opencode_client.py` for session listing.
