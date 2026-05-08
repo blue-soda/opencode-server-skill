@@ -74,11 +74,11 @@ def send_prompt(config, session_id, text):
 
 
 def build_message(original_prompt, created_at=None):
-    """Wrap a prompt with Beijing-time timestamp context."""
+    """Wrap a prompt with Beijing-time (UTC+8) timestamp context."""
     if created_at is None:
         created_at = datetime.now(BJT)
-    now_ts = datetime.now(BJT).strftime("%Y-%m-%d %H:%M:%S (北京时间)")
-    created_ts = created_at.strftime("%Y-%m-%d %H:%M:%S (北京时间)")
+    now_ts = datetime.now(BJT).strftime("%Y-%m-%d %H:%M:%S UTC+8")
+    created_ts = created_at.strftime("%Y-%m-%d %H:%M:%S UTC+8")
     return f"现在是{now_ts}，收到了一条来自{created_ts}的指令：\n{original_prompt}"
 
 
